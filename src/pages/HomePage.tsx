@@ -36,6 +36,18 @@ type HomePageProps = {
   onLogout: () => void;
 };
 
+const STEM_NAME_OVERRIDES: Record<string, string> = {
+  "chromatic percussion": "Percussion FX",
+  "strings (continued)": "Strings · Layer B",
+  "sound effects": "FX & Atmos",
+  "percussive": "Percussion",
+  "pipe": "Flutes & Pipes",
+  "reed": "Reed / Woodwinds",
+  "ethnic": "World Instruments",
+  "synth pad": "Synth Pad",
+  "synth lead": "Lead Synth",
+};
+
 export default function HomePage({ apiRoot = "", token, user, onLogout }: HomePageProps) {
   const [file, setFile] = useState<File | null>(null);
   const [fileUrl, setFileUrl] = useState<string | null>(null);
@@ -73,13 +85,16 @@ export default function HomePage({ apiRoot = "", token, user, onLogout }: HomePa
 
   const deriveStemName = useCallback((url: string, idx: number) => {
     const last = url.split("/").pop() || `Stem ${idx + 1}`;
-    const withoutQuery = last.split("?")[0];
+    const decoded = decodeURIComponent(last);
+    const withoutQuery = decoded.split("?")[0];
     const withoutExt = withoutQuery.replace(/\.[^/.]+$/, "");
-    const readable = withoutExt
-      .replace(/[-_]+/g, " ")
-      .replace(/\b\w/g, (char) => char.toUpperCase())
-      .trim();
-    return readable || `Stem ${idx + 1}`;
+    const base = withoutExt.replace(/_reconstructed$/i, "");
+    const normalized = base.replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim();
+    const pretty = normalized
+      .toLowerCase()
+      .replace(/\b\w/g, (char) => char.toUpperCase());
+    const override = STEM_NAME_OVERRIDES[normalized.toLowerCase()];
+    return override || pretty || `Stem ${idx + 1}`;
   }, []);
 
   const hydrateStem = useCallback(
