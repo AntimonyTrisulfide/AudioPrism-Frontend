@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
+import { PrismLogo } from "@/components/PrismLogo";
 import { toast } from "sonner";
 
 type LoginForm = { email: string; password: string; remember?: boolean };
@@ -21,6 +22,12 @@ type AuthPageProps = {
   apiBase?: string;
   onAuthenticated?: (token: string, user?: AuthUser | null) => void;
 };
+
+const heroSteps = [
+  { title: "Upload a mix", detail: "Drag in a audio mix of any format." },
+  { title: "Choose stems to extract", detail: "AudioPrism isolates stems from your mix." },
+  { title: "Download results", detail: "Download links for stems are provided, we remove your data after 2 hours." },
+];
 
 export default function AuthPage({ apiBase = "/api/auth", onAuthenticated }: AuthPageProps) {
   const [loading, setLoading] = useState(false);
@@ -102,29 +109,45 @@ export default function AuthPage({ apiBase = "/api/auth", onAuthenticated }: Aut
   });
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4 py-10 text-white">
-      <div className="grid w-full max-w-5xl gap-10 rounded-2xl border border-white/10 bg-slate-950/70 p-8 shadow-2xl shadow-black/40 backdrop-blur-xl md:grid-cols-[1fr_1.1fr]">
-        <section className="space-y-6">
+    <div
+      className="flex min-h-screen items-center justify-center px-4 py-10 text-white"
+      style={{
+        background:
+          "radial-gradient(circle at 15% 20%, rgba(59,130,246,0.3), transparent 55%), radial-gradient(circle at 85% 0%, rgba(236,72,153,0.28), transparent 45%), #020617",
+      }}
+    >
+      <div className="grid w-full max-w-5xl gap-10 rounded-3xl border border-white/10 bg-slate-950/70 p-8 shadow-[0_25px_80px_rgba(2,6,23,0.9)] backdrop-blur-2xl md:grid-cols-[1fr_1.1fr]">
+        <section className="flex flex-col gap-8">
+          <div className="flex justify-center">
+            <PrismLogo size="lg" />
+          </div>
           <div>
-            <p className="text-sm font-black uppercase tracking-[0.45em] text-indigo-200">SegmentNet</p>
-            <h1 className="mt-3 text-3xl font-semibold">Stem splitting without the fluff.</h1>
-            <p className="mt-2 text-sm text-slate-300">SegmentNet breaks any mix into clean drums, brass, bass, guitar, vocals, and FX layers in a single pass.</p>
+            <p className="text-sm font-black uppercase tracking-[0.5em] text-sky-200">AudioPrism</p>
+            <h1 className="mt-3 text-4xl font-semibold leading-tight">
+              Separate stems from audio mixes.
+            </h1>
+            <p className="mt-4 text-sm text-slate-300">
+              AudioPrism separates your mixes into bass, drums, etc. layers so you can remix, clean up or edit mixes.
+            </p>
           </div>
 
           <div className="space-y-3 text-sm text-slate-300">
-            {["Upload audio", "Choose stems", "Download parts"].map((step, idx) => (
-              <div key={step} className="flex items-center justify-between rounded-lg border border-white/5 bg-white/5 px-3 py-2">
-                <span className="text-white">{step}</span>
-                <span className="text-xs text-slate-400">0{idx + 1}</span>
+            {heroSteps.map((step, idx) => (
+              <div key={step.title} className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                <div className="flex items-center justify-between text-white">
+                  <span className="font-medium">{step.title}</span>
+                  <span className="text-xs text-slate-400">0{idx + 1}</span>
+                </div>
+                <p className="mt-1 text-xs text-slate-400">{step.detail}</p>
               </div>
             ))}
           </div>
         </section>
 
-        <Card className="border-white/10 bg-slate-900/80 text-white">
+        <Card className="border-white/10 bg-gradient-to-br from-slate-900/90 to-slate-900/40 text-white">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Access SegmentNet</CardTitle>
-            <CardDescription className="text-slate-300">Minimal login & signup card. Nothing extra.</CardDescription>
+            <CardTitle className="text-2xl">Access AudioPrism</CardTitle>
+            <CardDescription className="text-slate-300">Login required for processing history.</CardDescription>
           </CardHeader>
           <CardContent>
             <Tabs value={mode} onValueChange={(v) => setMode(v as "login" | "signup")}> 
@@ -138,7 +161,7 @@ export default function AuthPage({ apiBase = "/api/auth", onAuthenticated }: Aut
                   <form onSubmit={onLogin} className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="login-email">Email</Label>
-                      <Input id="login-email" placeholder="you@segment.net" {...regLogin("email", { required: "Email required" })} />
+                      <Input id="login-email" placeholder="you@email.com" {...regLogin("email", { required: "Email required" })} />
                       {loginErrors.email && <p className="text-xs text-red-400">{loginErrors.email.message}</p>}
                     </div>
 
@@ -159,12 +182,16 @@ export default function AuthPage({ apiBase = "/api/auth", onAuthenticated }: Aut
                         />
                         <span>Remember me</span>
                       </label>
-                      <a className="text-xs text-indigo-200 hover:text-indigo-100" href="/forgot">
+                      <a className="text-xs text-sky-200 hover:text-sky-100" href="/forgot">
                         Forgot?
                       </a>
                     </div>
 
-                    <Button type="submit" className="h-11 w-full" disabled={loading}>
+                    <Button
+                      type="submit"
+                      className="h-11 w-full bg-gradient-to-r from-sky-400 via-emerald-300 to-fuchsia-400 text-slate-950 hover:opacity-95"
+                      disabled={loading}
+                    >
                       {loading ? "Authenticating..." : "Login"}
                     </Button>
                   </form>
@@ -180,7 +207,7 @@ export default function AuthPage({ apiBase = "/api/auth", onAuthenticated }: Aut
 
                     <div className="space-y-2">
                       <Label>Email</Label>
-                      <Input placeholder="you@segment.net" {...regSignup("email", { required: "Email required" })} />
+                      <Input placeholder="you@audioprism.cloud" {...regSignup("email", { required: "Email required" })} />
                       {signupErrors.email && <p className="text-xs text-red-400">{signupErrors.email.message}</p>}
                     </div>
 
@@ -210,7 +237,11 @@ export default function AuthPage({ apiBase = "/api/auth", onAuthenticated }: Aut
                       </div>
                     </div>
 
-                    <Button type="submit" className="h-11 w-full" disabled={loading}>
+                    <Button
+                      type="submit"
+                      className="h-11 w-full bg-gradient-to-r from-sky-400 via-indigo-400 to-fuchsia-400 text-slate-950 hover:opacity-95"
+                      disabled={loading}
+                    >
                       {loading ? "Creating account..." : "Create account"}
                     </Button>
                   </form>
@@ -219,8 +250,8 @@ export default function AuthPage({ apiBase = "/api/auth", onAuthenticated }: Aut
             </Tabs>
           </CardContent>
           <CardFooter className="flex flex-col gap-2 text-center text-xs text-slate-400">
-            <p>SegmentNet keeps your splits synced across devices.</p>
-            <p className="text-slate-500">Built by me. Feedback is welcome.</p>
+            <p>AudioPrism syncs your history across every session.</p>
+            <p className="text-slate-500"><a href="https://antimonytrisulfide.github.io" target="_blank" rel="noopener noreferrer">Built by Manav Marmat.</a> <a>Feedback welcome.</a></p>
           </CardFooter>
         </Card>
       </div>

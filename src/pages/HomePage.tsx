@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { UploadCloud, Download, Loader2, AudioLines, ChevronDown } from "lucide-react";
 import { AudioSpectrum } from "@/components/AudioSpectrum";
+import { PrismLogo } from "@/components/PrismLogo";
 
 type Stem = {
   id: string;
@@ -14,6 +15,11 @@ type Stem = {
   downloadUrl?: string;
   originalUrl?: string;
   visualizerReady: boolean;
+};
+
+type StemDescriptor = {
+  url: string;
+  name?: string | null;
 };
 
 type StemSummary = {
@@ -83,8 +89,9 @@ export default function HomePage({ apiRoot = "", token, user, onLogout }: HomePa
   }, []);
 
   const hydrateStem = useCallback(
-    async (url: string, idx: number): Promise<Stem> => {
+    async ({ url, name }: StemDescriptor, idx: number): Promise<Stem> => {
       const absolute = toAbsoluteUrl(url);
+      const resolvedName = name?.toString().trim() || deriveStemName(url, idx);
       try {
         const response = await fetch(absolute, { mode: "cors" });
         if (!response.ok) throw new Error(`Failed to fetch stem (${response.status})`);
@@ -93,7 +100,7 @@ export default function HomePage({ apiRoot = "", token, user, onLogout }: HomePa
         allocatedBlobUrls.current.push(blobUrl);
         return {
           id: `${Date.now()}-${idx}`,
-          name: deriveStemName(url, idx),
+          name: resolvedName,
           audioUrl: blobUrl,
           downloadUrl: absolute,
           originalUrl: absolute,
@@ -103,7 +110,7 @@ export default function HomePage({ apiRoot = "", token, user, onLogout }: HomePa
         console.error("Unable to cache stem locally", err);
         return {
           id: `${Date.now()}-${idx}`,
-          name: deriveStemName(url, idx),
+          name: resolvedName,
           audioUrl: absolute,
           downloadUrl: absolute,
           originalUrl: absolute,
@@ -193,13 +200,69 @@ export default function HomePage({ apiRoot = "", token, user, onLogout }: HomePa
       }
 
       clearStemBlobs();
-      const outputs: string[] = data?.outputs ?? data?.files ?? [];
-      const mapped: Stem[] = await Promise.all(outputs.map((url, idx) => hydrateStem(url, idx)));
 
-      if (!mapped.length) {
+      const normalizeStemEntries = (entries: unknown[]): StemDescriptor[] => {
+        return entries
+          .map((entry) => {
+            if (!entry) return null;
+            if (typeof entry === "string") {
+              return { url: entry };
+            }
+            if (typeof entry !== "object") return null;
+            const source = entry as Record<string, unknown>;
+            const urlCandidate =
+              (source.url as string | undefined) ||
+              (source.audioUrl as string | undefined) ||
+              (source.downloadUrl as string | undefined) ||
+              (source.href as string | undefined) ||
+              (source.path as string | undefined) ||
+              "";
+            if (!urlCandidate) return null;
+            const explicitName =
+              (source.name as string | undefined) ||
+              (source.label as string | undefined) ||
+              (source.kind as string | undefined) ||
+              (source.type as string | undefined) ||
+              (source.title as string | undefined) ||
+              (source.track as string | undefined) ||
+              (source.part as string | undefined) ||
+              null;
+            return { url: urlCandidate, name: explicitName };
+          })
+          .filter((entry): entry is StemDescriptor => Boolean(entry?.url));
+      };
+
+      const outputsRaw = Array.isArray(data?.outputs)
+        ? data.outputs
+        : Array.isArray(data?.files)
+          ? data.files
+          : [];
+      const outputs = outputsRaw.filter((url: string): url is string => typeof url === "string" && Boolean(url));
+
+      const nameList = [data?.stemNames, data?.stem_names, data?.labels, data?.stem_labels].find(
+        (value): value is string[] => Array.isArray(value)
+      );
+
+      let stemDescriptors: StemDescriptor[] = [];
+
+      if (Array.isArray(data?.stems)) {
+        stemDescriptors = normalizeStemEntries(data.stems as unknown[]);
+      }
+
+      if (!stemDescriptors.length && outputs.length) {
+        stemDescriptors = outputs.map((url: string, idx: number) => ({
+          url,
+          name: nameList?.[idx],
+        }));
+      }
+
+      if (!stemDescriptors.length) {
         toast("No stems returned by the server.");
         setStems([]);
       } else {
+        const mapped: Stem[] = await Promise.all(
+          stemDescriptors.map((descriptor, idx) => hydrateStem(descriptor, idx))
+        );
         setStems(mapped);
       }
 
@@ -216,20 +279,29 @@ export default function HomePage({ apiRoot = "", token, user, onLogout }: HomePa
   const displayName = user?.username || user?.email || "user";
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white px-4 py-10">
+    <div
+      className="min-h-screen px-4 py-10 text-white"
+      style={{
+        background:
+          "radial-gradient(circle at 10% 20%, rgba(59,130,246,0.25), transparent 55%), radial-gradient(circle at 80% 0%, rgba(236,72,153,0.2), transparent 45%), #020617",
+      }}
+    >
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-10">
         {/* Top header */}
         <header className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.4em] text-indigo-300">
-              SegmentNet
-            </p>
-            <h1 className="mt-2 text-3xl font-semibold">
-              Split audio into stems with <span className="text-indigo-300">visual feedback</span>
-            </h1>
-            <p className="mt-1 text-sm text-slate-300">
-              Upload any mix, inspect its spectrum, and download isolated stems.
-            </p>
+          <div className="flex flex-1 flex-wrap items-start gap-4">
+            <PrismLogo size="sm" showWordmark={false} className="hidden sm:flex" />
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.5em] text-sky-200">
+                AudioPrism
+              </p>
+              <h1 className="mt-2 text-3xl font-semibold">
+                Split audio into stems using <span className="text-sky-200">AudioPrism - A UNet based audio stem segmentation model</span>
+              </h1>
+              <p className="mt-1 text-sm text-slate-300">
+                Upload any mix (mp3, wav, m4a), download isolated stems ready for remixing, recombination or analysis.
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-3 text-sm text-slate-400">
             <p>
@@ -247,7 +319,7 @@ export default function HomePage({ apiRoot = "", token, user, onLogout }: HomePa
             <CardHeader>
               <CardTitle>1. Upload your audio</CardTitle>
               <CardDescription className="text-slate-300">
-                Supports mp3 / wav / m4a. Max ~5 minutes recommended for now.
+                Supports mp3 / wav / m4a.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -262,7 +334,7 @@ export default function HomePage({ apiRoot = "", token, user, onLogout }: HomePa
                     <span className="text-slate-400">or drag and drop</span>
                   </div>
                   <span className="text-xs text-slate-500">
-                    MP3, WAV, M4A • &lt; 50 MB
+                    MP3, WAV, M4A formats supported
                   </span>
                   <Input
                     type="file"
