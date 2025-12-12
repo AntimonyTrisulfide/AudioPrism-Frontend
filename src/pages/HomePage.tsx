@@ -279,13 +279,7 @@ export default function HomePage({ apiRoot = "", token, user, onLogout }: HomePa
   const displayName = user?.username || user?.email || "user";
 
   return (
-    <div
-      className="min-h-screen px-4 py-10 text-white"
-      style={{
-        background:
-          "radial-gradient(circle at 10% 20%, rgba(59,130,246,0.25), transparent 55%), radial-gradient(circle at 80% 0%, rgba(236,72,153,0.2), transparent 45%), #020617",
-      }}
-    >
+    <div className="min-h-screen px-4 py-10 text-white">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-10">
         {/* Top header */}
         <header className="flex flex-wrap items-center justify-between gap-4">
